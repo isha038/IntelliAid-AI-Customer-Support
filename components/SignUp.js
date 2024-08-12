@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styles from "./SignUp.module.scss";
 import { auth, db } from "../firebase";
+import { getAuth } from 'firebase/auth';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -19,28 +20,33 @@ export default function SignUp() {
       return;
     }
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Save additional user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
         createdAt: new Date(),
         uid: user.uid,
       });
-
       console.log("User signed up:", user);
       router.push("/landingPage");
     } catch (error) {
-      if (error.code === "auth/email-already-in-use") {
-        alert("Email is already in use. Please sign in.");
-      } else {
-        console.error("Error during sign up:", error);
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          alert("Email is already in use. Please sign in.");
+          break;
+        case "auth/invalid-email":
+          alert("Invalid email address. Please check the email format.");
+          break;
+        case "auth/weak-password":
+          alert("Password should be at least 6 characters.");
+          break;
+        default:
+          console.error("Error during sign up:", error.message);
+          alert("An error occurred. Please try again.");
       }
+      
     }
   };
 
